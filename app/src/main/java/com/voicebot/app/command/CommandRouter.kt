@@ -133,10 +133,29 @@ class CommandRouter(
             containsAny(text, "громче", "прибавь звук") -> changeVolume(up = true)
             containsAny(text, "тише", "убавь звук") -> changeVolume(up = false)
 
-            // ---- tap by visible label: "нажми <что-то>" ---------------------
-            startsWithAny(text, "нажми", "тапни", "выбери", "кликни") -> {
-                val label = stripPrefix(text, "нажми", "тапни", "выбери", "кликни")
-                if (label.isNotBlank() && a11y()?.tapByText(label) != true) {
+            // ---- focus a text field: "текст" / "поле" -----------------------
+            containsAny(text, "поле ввода", "найди поле") || text == "текст" -> {
+                if (a11y()?.focusEditable() == true) {
+                    toast("Поле готово. Скажите: «${prefs.wakeWord} ввод <текст>»")
+                } else {
+                    toast("Поле ввода не найдено")
+                }
+            }
+
+            // ---- type into the focused field: "ввод <текст>" ----------------
+            startsWithAny(text, "ввод", "введи", "напиши") -> {
+                val toType = stripPrefix(text, "ввод", "введи", "напиши").trim()
+                if (toType.isBlank()) toast("Скажите: «ввод <текст>»") else typeText(toType)
+            }
+
+            // ---- tap: "нажми <что-то>" / just "нажать" = клик по центру ------
+            startsWithAny(text, "нажми", "тапни", "выбери", "кликни", "нажать", "клик", "тап") -> {
+                val label = stripPrefix(
+                    text, "нажми", "тапни", "выбери", "кликни", "нажать", "клик", "тап"
+                )
+                if (label.isBlank()) {
+                    a11y()?.tapCenter()
+                } else if (a11y()?.tapByText(label) != true) {
                     toast("Не нашёл на экране: «$label»")
                 }
             }
@@ -163,7 +182,11 @@ class CommandRouter(
             toast("Диктовка завершена")
             return
         }
-        // Correct in background, then type into the focused field.
+        typeText(text)
+    }
+
+    /** Optionally clean up [text] via the LLM, then type it into the focused field. */
+    private fun typeText(text: String) {
         scope.launch(Dispatchers.IO) {
             try {
                 val out = if (prefs.grammarFix && prefs.apiKey.isNotBlank()) {
@@ -175,7 +198,7 @@ class CommandRouter(
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Dictation failed", e)
+                Log.e(TAG, "typeText failed", e)
                 toast("Ошибка обработки текста")
             }
         }
@@ -194,15 +217,25 @@ class CommandRouter(
 
     private fun openApp(query: String) {
         val pm = context.packageManager
-        val target = query.trim()
+        val target = query.trim().lowercase()
         if (target.isBlank()) return
+
+        // Build a set of things to look for: the raw Russian word, its Latin
+        // transliteration ("телеграм" -> "telegram"), and any known aliases.
+        val needles = buildSet {
+            add(target)
+            add(translit(target))
+            APP_ALIASES[target]?.let { add(it) }
+            APP_ALIASES.forEach { (ru, en) -> if (target.contains(ru)) add(en) }
+        }.filter { it.length >= 2 }
+
         try {
-            val intent = pm.getInstalledApplications(0)
-                .firstOrNull {
-                    val label = pm.getApplicationLabel(it).toString().lowercase()
-                    label.contains(target) || target.contains(label)
-                }
-                ?.let { pm.getLaunchIntentForPackage(it.packageName) }
+            val app = pm.getInstalledApplications(0).firstOrNull { info ->
+                val label = pm.getApplicationLabel(info).toString().lowercase()
+                val pkg = info.packageName.lowercase()
+                needles.any { label.contains(it) || pkg.contains(it) }
+            }
+            val intent = app?.let { pm.getLaunchIntentForPackage(it.packageName) }
             if (intent != null) {
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(intent)
@@ -213,6 +246,11 @@ class CommandRouter(
             Log.e(TAG, "openApp failed for '$target'", e)
             toast("Не удалось открыть «$target»")
         }
+    }
+
+    /** Rough Cyrillic -> Latin transliteration for matching app names. */
+    private fun translit(s: String): String = buildString {
+        for (c in s.lowercase()) append(TRANSLIT[c] ?: c.toString())
     }
 
     private fun changeVolume(up: Boolean) {
@@ -253,5 +291,32 @@ class CommandRouter(
         private const val TAG = "CommandRouter"
         // How long after hearing the name the next phrase counts as a command.
         private const val WAKE_WINDOW_MS = 8000L
+
+        // Spoken Russian name -> substring found in the app's label/package.
+        private val APP_ALIASES = mapOf(
+            "телеграм" to "telegram", "телега" to "telegram", "тг" to "telegram",
+            "ватсап" to "whatsapp", "вотсап" to "whatsapp",
+            "вайбер" to "viber",
+            "ютуб" to "youtube", "ютюб" to "youtube", "ютьюб" to "youtube",
+            "вконтакте" to "vk", "вк" to "com.vkontakte",
+            "инстаграм" to "instagram", "инста" to "instagram",
+            "хром" to "chrome", "браузер" to "chrome",
+            "почта" to "mail", "гмайл" to "gmail",
+            "карты" to "maps", "стим" to "steam",
+            "дискорд" to "discord", "спотифай" to "spotify",
+            "тикток" to "tiktok", "плейстор" to "vending", "маркет" to "vending",
+            "настройки" to "settings", "камера" to "camera",
+            "галерея" to "gallery", "калькулятор" to "calcul",
+        )
+
+        private val TRANSLIT: Map<Char, String> = mapOf(
+            'а' to "a", 'б' to "b", 'в' to "v", 'г' to "g", 'д' to "d",
+            'е' to "e", 'ё' to "e", 'ж' to "zh", 'з' to "z", 'и' to "i",
+            'й' to "y", 'к' to "k", 'л' to "l", 'м' to "m", 'н' to "n",
+            'о' to "o", 'п' to "p", 'р' to "r", 'с' to "s", 'т' to "t",
+            'у' to "u", 'ф' to "f", 'х' to "h", 'ц' to "ts", 'ч' to "ch",
+            'ш' to "sh", 'щ' to "sch", 'ъ' to "", 'ы' to "y", 'ь' to "",
+            'э' to "e", 'ю' to "yu", 'я' to "ya", ' ' to "",
+        )
     }
 }

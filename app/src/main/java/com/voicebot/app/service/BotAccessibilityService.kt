@@ -57,6 +57,16 @@ class BotAccessibilityService : AccessibilityService() {
         return node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
     }
 
+    /**
+     * Find the first editable field on screen and focus it (placing the cursor).
+     * Used by the "текст" command to prepare for dictation.
+     */
+    fun focusEditable(): Boolean {
+        val node = rootInActiveWindow?.let { findEditable(it) } ?: return false
+        node.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+        return node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+    }
+
     /** Clear the focused field. */
     fun clearFocusedField(): Boolean {
         val node = findFocusedEditable() ?: return false
@@ -104,6 +114,16 @@ class BotAccessibilityService : AccessibilityService() {
             GestureDescription.Builder().addStroke(stroke).build(),
             null,
             null
+        )
+    }
+
+    /** Tap in the middle of the screen (a simple "click" with no target). */
+    fun tapCenter(): Boolean {
+        val m = resources.displayMetrics
+        val path = Path().apply { moveTo(m.widthPixels / 2f, m.heightPixels / 2f) }
+        val stroke = GestureDescription.StrokeDescription(path, 0, 60)
+        return dispatchGesture(
+            GestureDescription.Builder().addStroke(stroke).build(), null, null
         )
     }
 
