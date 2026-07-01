@@ -32,11 +32,34 @@ class CommandRouter(
         val text = rawText.trim().lowercase()
         if (text.isBlank()) return
 
+        // In dictation mode everything is text, no wake word needed.
         if (dictating) {
             handleDictation(text)
             return
         }
 
+        // Outside dictation the phrase must be addressed to the bot by name,
+        // e.g. "боб, домой". Everything before/including the name is stripped.
+        val command = extractAfterWakeWord(text) ?: return
+        if (command.isBlank()) return
+
+        route(command)
+    }
+
+    /**
+     * Returns the command part after the wake word, or null if the phrase
+     * isn't addressed to the bot. If no wake word is configured, passes through.
+     */
+    private fun extractAfterWakeWord(text: String): String? {
+        val wake = prefs.wakeWord.trim().lowercase()
+        if (wake.isBlank()) return text
+        val idx = text.indexOf(wake)
+        if (idx < 0) return null
+        // Drop the wake word and any trailing comma/space after it.
+        return text.substring(idx + wake.length).trimStart(' ', ',', '.', '!')
+    }
+
+    private fun route(text: String) {
         when {
             // ---- enter/exit dictation ---------------------------------------
             startsWithAny(text, "печатай", "пиши", "диктовка", "напечатай") -> {

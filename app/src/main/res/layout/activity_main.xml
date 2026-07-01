@@ -48,6 +48,27 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:text="Имя бота (обращение)"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/wakeWord"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="боб"
+            android:inputType="text"
+            android:autofillHints="" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:paddingBottom="8dp"
+            android:text="Бот реагирует только на фразы с этим именем, напр. «Боб, домой»." />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:text="Claude API ключ"
             android:textStyle="bold" />
 

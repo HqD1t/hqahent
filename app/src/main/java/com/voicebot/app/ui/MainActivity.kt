@@ -43,6 +43,7 @@ class MainActivity : AppCompatActivity() {
         prefs = Prefs(this)
 
         binding.apiKey.setText(prefs.apiKey)
+        binding.wakeWord.setText(prefs.wakeWord)
         binding.grammarSwitch.isChecked = prefs.grammarFix
         binding.toggle.isChecked = prefs.enabled
 
@@ -56,7 +57,9 @@ class MainActivity : AppCompatActivity() {
 
         binding.saveKey.setOnClickListener {
             prefs.apiKey = binding.apiKey.text.toString()
-            toast("Ключ сохранён")
+            val name = binding.wakeWord.text.toString().trim()
+            if (name.isNotBlank()) prefs.wakeWord = name
+            toast("Сохранено. Имя бота: «${prefs.wakeWord}»")
         }
 
         binding.openAccessibility.setOnClickListener {

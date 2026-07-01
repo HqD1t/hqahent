@@ -30,6 +30,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_GRAMMAR, true)
         set(value) = sp.edit().putBoolean(KEY_GRAMMAR, value).apply()
 
+    /** Wake word: the bot only reacts to phrases starting with this name. */
+    var wakeWord: String
+        get() = sp.getString(KEY_WAKE, "боб") ?: "боб"
+        set(value) = sp.edit().putString(KEY_WAKE, value.trim().lowercase()).apply()
+
     // ---- Templates: name -> body -------------------------------------------
 
     fun templates(): Map<String, String> {
@@ -71,5 +76,6 @@ class Prefs(context: Context) {
         private const val KEY_GRAMMAR = "grammar_fix"
         private const val KEY_TEMPLATES = "templates"
         private const val KEY_TRIGGERS = "triggers"
+        private const val KEY_WAKE = "wake_word"
     }
 }
