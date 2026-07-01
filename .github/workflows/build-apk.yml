@@ -1,0 +1,38 @@
+name: Build APK
+
+# Builds a debug APK on every push and lets you download it from the
+# "Actions" tab -> latest run -> "Artifacts" -> voicebot-debug-apk.
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      # The repo ships without the binary gradle-wrapper.jar, so generate it
+      # using the Gradle preinstalled on the runner.
+      - name: Generate Gradle wrapper
+        run: gradle wrapper --gradle-version 8.9
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: voicebot-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
