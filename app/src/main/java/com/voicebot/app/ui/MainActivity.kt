@@ -176,9 +176,9 @@ class MainActivity : AppCompatActivity() {
         binding.micResult.text = "🎤 Говорите…"
         testRecognizer = VoskRecognizer(
             context = this,
-            onPartial = { p -> runOnUiThread { if (p.isNotBlank()) binding.micResult.text = "Слышу: $p" } },
-            onResult = { t -> runOnUiThread { binding.micResult.text = "Распознано: $t" } },
-            onError = { e -> runOnUiThread { binding.micResult.text = "❌ Ошибка: $e" } },
+            emitPartial = { p -> runOnUiThread { if (p.isNotBlank()) binding.micResult.text = "Слышу: $p" } },
+            emitResult = { t -> runOnUiThread { binding.micResult.text = "Распознано: $t" } },
+            emitError = { e -> runOnUiThread { binding.micResult.text = "❌ Ошибка: $e" } },
         )
         val started = testRecognizer?.start() == true
         if (!started) {

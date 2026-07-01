@@ -41,16 +41,16 @@ class VoiceService : Service() {
     private fun startRecognition() {
         recognizer = VoskRecognizer(
             context = this,
-            onPartial = { partial ->
+            emitPartial = { partial ->
                 // Live feedback: proves the mic + recognizer are actually working.
                 if (partial.isNotBlank()) updateNotification("Слышу: $partial")
             },
-            onResult = { text ->
+            emitResult = { text ->
                 // Show what was heard so behaviour is debuggable at a glance.
                 updateNotification("Услышал: $text")
                 router.handle(text)
             },
-            onError = { msg -> updateNotification("Ошибка: $msg") },
+            emitError = { msg -> updateNotification("Ошибка: $msg") },
         )
         val started = recognizer?.start() == true
         if (!started) {

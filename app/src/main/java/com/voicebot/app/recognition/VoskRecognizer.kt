@@ -10,14 +10,18 @@ import org.vosk.android.SpeechService
 
 /**
  * Wraps continuous offline recognition. Emits:
- *  - [onPartial]: live in-progress text (used only for UI feedback)
- *  - [onResult]: a finalized utterance (fed to the command router)
+ *  - [emitPartial]: live in-progress text (used only for UI feedback)
+ *  - [emitResult]: a finalized utterance (fed to the command router)
+ *
+ * NOTE: the callbacks are deliberately NOT named onResult/onError — those clash
+ * with [RecognitionListener]'s own methods inside the anonymous object and would
+ * recurse instead of calling out.
  */
 class VoskRecognizer(
     private val context: Context,
-    private val onPartial: (String) -> Unit,
-    private val onResult: (String) -> Unit,
-    private val onError: (String) -> Unit,
+    private val emitPartial: (String) -> Unit,
+    private val emitResult: (String) -> Unit,
+    private val emitError: (String) -> Unit,
 ) {
 
     private var model: Model? = null
@@ -25,7 +29,7 @@ class VoskRecognizer(
 
     fun start(): Boolean {
         if (!ModelManager.isInstalled(context)) {
-            onError("Модель распознавания не установлена")
+            emitError("Модель распознавания не установлена")
             return false
         }
         return try {
@@ -38,7 +42,7 @@ class VoskRecognizer(
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start recognizer", e)
-            onError("Ошибка запуска распознавания: ${e.message}")
+            emitError("Ошибка запуска распознавания: ${e.message}")
             false
         }
     }
@@ -53,13 +57,12 @@ class VoskRecognizer(
 
     private val listener = object : RecognitionListener {
         override fun onPartialResult(hypothesis: String?) {
-            val text = hypothesis?.let { JSONObject(it).optString("partial", "") } ?: ""
-            if (text.isNotBlank()) onPartial(text)
+            emitPartial(parse(hypothesis, "partial"))
         }
 
         override fun onResult(hypothesis: String?) {
-            val text = hypothesis?.let { JSONObject(it).optString("text", "") } ?: ""
-            if (text.isNotBlank()) onResult(text)
+            val text = parse(hypothesis, "text")
+            if (text.isNotBlank()) emitResult(text)
         }
 
         override fun onFinalResult(hypothesis: String?) {
@@ -68,10 +71,20 @@ class VoskRecognizer(
         }
 
         override fun onError(exception: Exception?) {
-            onError(exception?.message ?: "unknown error")
+            emitError(exception?.message ?: "unknown error")
         }
 
         override fun onTimeout() {}
+
+        /** Vosk returns a JSON string like {"text":"..."}; extract [key] safely. */
+        private fun parse(hypothesis: String?, key: String): String {
+            if (hypothesis.isNullOrBlank()) return ""
+            return try {
+                JSONObject(hypothesis).optString(key, "")
+            } catch (e: Exception) {
+                ""
+            }
+        }
     }
 
     companion object {
