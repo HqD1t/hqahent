@@ -41,7 +41,10 @@ class VoiceService : Service() {
     private fun startRecognition() {
         recognizer = VoskRecognizer(
             context = this,
-            onPartial = { /* live text; could update notification */ },
+            onPartial = { partial ->
+                // Live feedback: proves the mic + recognizer are actually working.
+                if (partial.isNotBlank()) updateNotification("Слышу: $partial")
+            },
             onResult = { text ->
                 // Show what was heard so behaviour is debuggable at a glance.
                 updateNotification("Услышал: $text")
@@ -49,7 +52,10 @@ class VoiceService : Service() {
             },
             onError = { msg -> updateNotification("Ошибка: $msg") },
         )
-        recognizer?.start()
+        val started = recognizer?.start() == true
+        if (!started) {
+            updateNotification("Распознавание не запущено — см. статус в приложении")
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

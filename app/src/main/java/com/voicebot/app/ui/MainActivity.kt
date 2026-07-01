@@ -12,6 +12,7 @@ import androidx.core.content.ContextCompat
 import com.voicebot.app.data.Prefs
 import com.voicebot.app.databinding.ActivityMainBinding
 import com.voicebot.app.recognition.ModelManager
+import com.voicebot.app.recognition.VoskRecognizer
 import com.voicebot.app.service.BotAccessibilityService
 import com.voicebot.app.service.VoiceService
 import kotlin.concurrent.thread
@@ -24,6 +25,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var prefs: Prefs
+    private var testRecognizer: VoskRecognizer? = null
 
     private val micPermission = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -81,6 +83,8 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
 
+        binding.testMic.setOnClickListener { runMicTest() }
+
         binding.saveTemplate.setOnClickListener {
             val name = binding.templateName.text.toString().trim()
             val body = binding.templateBody.text.toString()
@@ -104,6 +108,81 @@ class MainActivity : AppCompatActivity() {
             "Служба управления: включена ✅"
         else
             "Служба управления: выключена ⚠️ (нажмите кнопку ниже)"
+        refreshStatus()
+    }
+
+    private fun refreshStatus() {
+        val mic = ContextCompat.checkSelfPermission(
+            this, Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+        val model = ModelManager.isInstalled(this)
+        binding.statusInfo.text = buildString {
+            append(if (mic) "Микрофон: разрешён ✅" else "Микрофон: НЕТ доступа ❌")
+            append("\n")
+            append(if (model) "Модель Vosk: установлена ✅" else "Модель Vosk: НЕ установлена ❌")
+            append("\n")
+            append("Имя бота: «${prefs.wakeWord}»")
+        }
+    }
+
+    /**
+     * Isolated recognition test — bypasses the service and wake-word logic to
+     * prove whether the mic + Vosk model actually produce text on this device.
+     */
+    private fun runMicTest() {
+        if (prefs.enabled) {
+            toast("Сначала выключите бота (верхний тумблер) — микрофон занят")
+            return
+        }
+        val mic = ContextCompat.checkSelfPermission(
+            this, Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!mic) {
+            micPermission.launch(
+                arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS)
+            )
+            return
+        }
+        if (!ModelManager.isInstalled(this)) {
+            binding.micResult.text = "Скачиваю модель…"
+            thread {
+                val ok = ModelManager.download(this) {}
+                runOnUiThread {
+                    refreshStatus()
+                    if (ok) runMicTest()
+                    else binding.micResult.text = "❌ Модель не скачалась. Проверьте интернет."
+                }
+            }
+            return
+        }
+
+        testRecognizer?.stop()
+        binding.micResult.text = "🎤 Говорите…"
+        testRecognizer = VoskRecognizer(
+            context = this,
+            onPartial = { p -> runOnUiThread { if (p.isNotBlank()) binding.micResult.text = "Слышу: $p" } },
+            onResult = { t -> runOnUiThread { binding.micResult.text = "Распознано: $t" } },
+            onError = { e -> runOnUiThread { binding.micResult.text = "❌ Ошибка: $e" } },
+        )
+        val started = testRecognizer?.start() == true
+        if (!started) {
+            binding.micResult.text = "❌ Не удалось запустить распознавание"
+            return
+        }
+        // Auto-stop after 10 seconds.
+        binding.testMic.postDelayed({
+            testRecognizer?.stop()
+            testRecognizer = null
+            if (binding.micResult.text.toString().startsWith("🎤")) {
+                binding.micResult.text = "Тишина — микрофон не дал звука. Проверьте доступ к микрофону в фоне."
+            }
+        }, 10_000)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        testRecognizer?.stop()
+        testRecognizer = null
     }
 
     private fun requestStart() {

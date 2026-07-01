@@ -48,6 +48,40 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:text="Диагностика"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/statusInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingVertical="6dp"
+            android:text="—" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/testMic"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Тест микрофона (10 сек)" />
+
+        <TextView
+            android:id="@+id/micResult"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingVertical="6dp"
+            android:minLines="2"
+            android:text="Нажмите «Тест микрофона» и говорите" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#33000000"
+            android:layout_marginVertical="16dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:text="Имя бота (обращение)"
             android:textStyle="bold" />
 
