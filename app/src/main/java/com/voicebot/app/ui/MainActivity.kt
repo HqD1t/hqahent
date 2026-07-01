@@ -85,6 +85,12 @@ class MainActivity : AppCompatActivity() {
 
         binding.testMic.setOnClickListener { runMicTest() }
 
+        binding.clearCrash.setOnClickListener {
+            com.voicebot.app.App.clearCrash(this)
+            showLastCrash()
+            toast("Лог очищен")
+        }
+
         binding.saveTemplate.setOnClickListener {
             val name = binding.templateName.text.toString().trim()
             val body = binding.templateBody.text.toString()
@@ -109,6 +115,16 @@ class MainActivity : AppCompatActivity() {
         else
             "Служба управления: выключена ⚠️ (нажмите кнопку ниже)"
         refreshStatus()
+        showLastCrash()
+    }
+
+    private fun showLastCrash() {
+        val crash = com.voicebot.app.App.readLastCrash(this)
+        val visible = if (crash.isNullOrBlank()) android.view.View.GONE else android.view.View.VISIBLE
+        binding.crashTitle.visibility = visible
+        binding.crashLog.visibility = visible
+        binding.clearCrash.visibility = visible
+        binding.crashLog.text = crash ?: ""
     }
 
     private fun refreshStatus() {

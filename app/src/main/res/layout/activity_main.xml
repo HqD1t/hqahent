@@ -73,6 +73,34 @@
             android:minLines="2"
             android:text="Нажмите «Тест микрофона» и говорите" />
 
+        <TextView
+            android:id="@+id/crashTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:textStyle="bold"
+            android:textColor="#D32F2F"
+            android:visibility="gone"
+            android:text="Последний сбой:" />
+
+        <TextView
+            android:id="@+id/crashLog"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
+            android:visibility="gone"
+            android:textIsSelectable="true"
+            android:text="" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/clearCrash"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:text="Очистить лог сбоя" />
+
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"

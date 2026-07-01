@@ -30,7 +30,17 @@ class CommandRouter(
 
     @Volatile private var dictating = false
     @Volatile private var armedUntil = 0L
-    private val tone = ToneGenerator(AudioManager.STREAM_MUSIC, 80)
+
+    // Created lazily and defensively: ToneGenerator can throw "Init failed" on
+    // some devices, and we must never let that crash the whole process.
+    private val tone: ToneGenerator? by lazy {
+        try {
+            ToneGenerator(AudioManager.STREAM_MUSIC, 80)
+        } catch (e: Exception) {
+            Log.w(TAG, "ToneGenerator unavailable", e)
+            null
+        }
+    }
 
     /**
      * Entry point for every finalized phrase. Wrapped so that a failure in one
@@ -91,7 +101,7 @@ class CommandRouter(
     /** Short confirmation beep when the wake word is recognized. */
     private fun beep() {
         try {
-            tone.startTone(ToneGenerator.TONE_PROP_BEEP, 150)
+            tone?.startTone(ToneGenerator.TONE_PROP_BEEP, 150)
         } catch (_: Exception) {
         }
     }
