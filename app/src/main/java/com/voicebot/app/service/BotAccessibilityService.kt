@@ -67,16 +67,22 @@ class BotAccessibilityService : AccessibilityService() {
         return node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
     }
 
-    /** Clear the focused field. */
-    fun clearFocusedField(): Boolean {
+    /** Current contents of the focused editable field, or null if none. */
+    fun getFocusedText(): String? = findFocusedEditable()?.text?.toString()
+
+    /** Replace the focused field's contents entirely with [text]. */
+    fun setFocusedText(text: String): Boolean {
         val node = findFocusedEditable() ?: return false
         val args = Bundle().apply {
             putCharSequence(
-                AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, ""
+                AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text
             )
         }
         return node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
     }
+
+    /** Clear the focused field. */
+    fun clearFocusedField(): Boolean = setFocusedText("")
 
     private fun findFocusedEditable(): AccessibilityNodeInfo? {
         rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)

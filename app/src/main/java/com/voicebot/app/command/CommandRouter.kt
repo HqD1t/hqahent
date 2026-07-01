@@ -172,8 +172,64 @@ class CommandRouter(
                 insertTemplate(name)
             }
 
-            else -> toast("Команда не распознана: «$text»")
+            // ---- unknown phrase: let DeepSeek figure out the intent ---------
+            else -> interpretWithLlm(text)
         }
+    }
+
+    /**
+     * Fallback for phrases that match no rule: ask the LLM to map the free-form
+     * request to one concrete action, then execute it.
+     */
+    private fun interpretWithLlm(phrase: String) {
+        if (prefs.apiKey.isBlank()) {
+            toast("Команда не распознана: «$phrase»")
+            return
+        }
+        scope.launch(Dispatchers.IO) {
+            val action = try {
+                LlmClient(prefs.apiKey).interpretCommand(phrase)
+            } catch (e: Exception) {
+                Log.e(TAG, "interpret failed", e); null
+            }
+            withContext(Dispatchers.Main) {
+                if (action == null) toast("Не понял команду: «$phrase»")
+                else executeSemanticAction(action.first, action.second, phrase)
+            }
+        }
+    }
+
+    private fun executeSemanticAction(action: String, arg: String, original: String) {
+        when (action) {
+            "go_home" -> a11y()?.goHome()
+            "go_back" -> a11y()?.goBack()
+            "recents" -> a11y()?.openRecents()
+            "notifications" -> a11y()?.openNotifications()
+            "scroll_up" -> a11y()?.scroll(BotAccessibilityService.Direction.UP)
+            "scroll_down" -> a11y()?.scroll(BotAccessibilityService.Direction.DOWN)
+            "volume_up" -> changeVolume(up = true)
+            "volume_down" -> changeVolume(up = false)
+            "tap_center" -> a11y()?.tapCenter()
+            "tap_text" -> if (a11y()?.tapByText(arg) != true) toast("Не нашёл: «$arg»")
+            "open_app" -> openApp(arg)
+            "focus_field" -> if (a11y()?.focusEditable() != true) toast("Поле не найдено")
+            "type_text" -> if (a11y()?.typeIntoFocusedField(arg) != true) toast("Нет поля ввода")
+            "clear_all" -> if (a11y()?.clearFocusedField() != true) toast("Нет поля ввода")
+            "delete_substring" -> deleteSubstring(arg)
+            else -> toast("Не понял команду: «$original»")
+        }
+    }
+
+    private fun deleteSubstring(sub: String) {
+        val a = a11y() ?: return
+        val current = a.getFocusedText()
+        if (current == null) {
+            toast("Нет поля ввода")
+            return
+        }
+        val updated = if (sub.isBlank()) ""
+        else current.replace(sub, "", ignoreCase = true).replace("  ", " ").trim()
+        a.setFocusedText(updated)
     }
 
     private fun handleDictation(text: String) {
