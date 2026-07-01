@@ -10,62 +10,68 @@ import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 /**
- * Thin wrapper over the Anthropic Messages API. Used to clean up dictated text:
- * fix recognition errors, restore punctuation and grammar, keep the meaning.
+ * Cleans up dictated Russian text via the DeepSeek API (OpenAI-compatible
+ * chat/completions endpoint): fixes recognition errors, punctuation and grammar
+ * while keeping the meaning.
  *
- * Runs on a background thread only (blocking call).
+ * Blocking — call from a background thread only.
  */
-class ClaudeClient(private val apiKey: String) {
+class LlmClient(private val apiKey: String) {
 
     private val http = OkHttpClient.Builder()
         .callTimeout(30, TimeUnit.SECONDS)
         .build()
 
     /**
-     * Returns a corrected version of [raw]. On any failure returns [raw] unchanged
-     * so dictation never gets lost because the network hiccuped.
+     * Returns a corrected version of [raw]. On any failure returns [raw]
+     * unchanged so dictation is never lost to a network hiccup.
      */
     fun correctText(raw: String): String {
         if (apiKey.isBlank()) return raw
         return try {
             val payload = JSONObject().apply {
                 put("model", MODEL)
-                put("max_tokens", 1024)
-                put("system", SYSTEM_PROMPT)
-                put("messages", JSONArray().put(
-                    JSONObject().apply {
+                put("stream", false)
+                put("messages", JSONArray()
+                    .put(JSONObject().apply {
+                        put("role", "system")
+                        put("content", SYSTEM_PROMPT)
+                    })
+                    .put(JSONObject().apply {
                         put("role", "user")
                         put("content", raw)
-                    }
-                ))
+                    })
+                )
             }
             val request = Request.Builder()
-                .url("https://api.anthropic.com/v1/messages")
-                .addHeader("x-api-key", apiKey)
-                .addHeader("anthropic-version", "2023-06-01")
-                .addHeader("content-type", "application/json")
+                .url("https://api.deepseek.com/chat/completions")
+                .addHeader("Authorization", "Bearer $apiKey")
+                .addHeader("Content-Type", "application/json")
                 .post(payload.toString().toRequestBody(JSON))
                 .build()
 
             http.newCall(request).execute().use { resp ->
                 val body = resp.body?.string().orEmpty()
                 if (!resp.isSuccessful) {
-                    Log.w(TAG, "Claude error ${resp.code}: $body")
+                    Log.w(TAG, "DeepSeek error ${resp.code}: $body")
                     return raw
                 }
-                val content = JSONObject(body).getJSONArray("content")
-                if (content.length() == 0) return raw
-                content.getJSONObject(0).optString("text", raw).trim()
+                val choices = JSONObject(body).optJSONArray("choices") ?: return raw
+                if (choices.length() == 0) return raw
+                choices.getJSONObject(0)
+                    .getJSONObject("message")
+                    .optString("content", raw)
+                    .trim()
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Claude request failed", e)
+            Log.w(TAG, "DeepSeek request failed", e)
             raw
         }
     }
 
     companion object {
-        private const val TAG = "ClaudeClient"
-        private const val MODEL = "claude-haiku-4-5-20251001"
+        private const val TAG = "LlmClient"
+        private const val MODEL = "deepseek-chat"
         private val JSON = "application/json; charset=utf-8".toMediaType()
 
         private const val SYSTEM_PROMPT =

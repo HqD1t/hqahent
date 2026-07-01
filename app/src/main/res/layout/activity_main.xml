@@ -69,14 +69,14 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Claude API ключ"
+            android:text="DeepSeek API ключ"
             android:textStyle="bold" />
 
         <EditText
             android:id="@+id/apiKey"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="sk-ant-..."
+            android:hint="sk-..."
             android:inputType="textPassword"
             android:autofillHints="" />
 
@@ -84,7 +84,7 @@
             android:id="@+id/grammarSwitch"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Исправлять грамматику через Claude"
+            android:text="Исправлять грамматику через DeepSeek"
             android:paddingVertical="8dp" />
 
         <com.google.android.material.button.MaterialButton

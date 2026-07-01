@@ -5,7 +5,7 @@ import android.content.Intent
 import android.media.AudioManager
 import android.widget.Toast
 import com.voicebot.app.data.Prefs
-import com.voicebot.app.llm.ClaudeClient
+import com.voicebot.app.llm.LlmClient
 import com.voicebot.app.service.BotAccessibilityService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -119,7 +119,7 @@ class CommandRouter(
         // Correct in background, then type into the focused field.
         scope.launch(Dispatchers.IO) {
             val out = if (prefs.grammarFix && prefs.apiKey.isNotBlank()) {
-                ClaudeClient(prefs.apiKey).correctText(text)
+                LlmClient(prefs.apiKey).correctText(text)
             } else text
             withContext(Dispatchers.Main) {
                 if (a11y()?.typeIntoFocusedField(out) != true) {
