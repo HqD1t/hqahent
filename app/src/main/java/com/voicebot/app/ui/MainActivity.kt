@@ -16,6 +16,7 @@ import com.voicebot.app.recognition.ModelManager
 import com.voicebot.app.recognition.VoskRecognizer
 import com.voicebot.app.service.BotAccessibilityService
 import com.voicebot.app.service.VoiceService
+import com.voicebot.app.util.LogReader
 import kotlin.concurrent.thread
 
 /**
@@ -27,6 +28,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var prefs: Prefs
     private var testRecognizer: VoskRecognizer? = null
+    private var logLevel = LogReader.Level.ALL
 
     private val micPermission = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -57,6 +59,20 @@ class MainActivity : AppCompatActivity() {
         binding.grammarSwitch.setOnCheckedChangeListener { _, checked ->
             prefs.grammarFix = checked
         }
+
+        // Mic gain slider: progress 0..10 -> gain 1.0..6.0
+        binding.micGain.progress = ((prefs.micGain - 1f) / 0.5f).toInt()
+        updateGainLabel(prefs.micGain)
+        binding.micGain.setOnSeekBarChangeListener(object :
+            android.widget.SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(sb: android.widget.SeekBar, p: Int, fromUser: Boolean) {
+                val gain = 1f + p * 0.5f
+                updateGainLabel(gain)
+                if (fromUser) prefs.micGain = gain
+            }
+            override fun onStartTrackingTouch(sb: android.widget.SeekBar) {}
+            override fun onStopTrackingTouch(sb: android.widget.SeekBar) {}
+        })
 
         binding.saveKey.setOnClickListener {
             prefs.apiKey = binding.apiKey.text.toString()
@@ -148,13 +164,41 @@ class MainActivity : AppCompatActivity() {
             binding.pager.displayedChild = when (item.itemId) {
                 R.id.nav_templates -> 1
                 R.id.nav_links -> 2
+                R.id.nav_logs -> 3
                 else -> 0
             }
+            if (item.itemId == R.id.nav_logs) refreshLogs()
             true
+        }
+
+        // ---- logs tab ----
+        binding.filterAll.setOnClickListener { logLevel = LogReader.Level.ALL; refreshLogs() }
+        binding.filterWarn.setOnClickListener { logLevel = LogReader.Level.WARN; refreshLogs() }
+        binding.filterError.setOnClickListener { logLevel = LogReader.Level.ERROR; refreshLogs() }
+        binding.logFilter.check(R.id.filterAll)
+        binding.logRefresh.setOnClickListener { refreshLogs() }
+        binding.logCopy.setOnClickListener {
+            val cm = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            cm.setPrimaryClip(
+                android.content.ClipData.newPlainText("logs", binding.logText.text)
+            )
+            toast("Логи скопированы")
         }
 
         renderTemplates()
         renderLinks()
+    }
+
+    private fun updateGainLabel(gain: Float) {
+        binding.gainLabel.text = "Чувствительность микрофона: ×%.1f".format(gain)
+    }
+
+    private fun refreshLogs() {
+        binding.logText.text = "Загрузка…"
+        thread {
+            val text = LogReader.read(logLevel)
+            runOnUiThread { binding.logText.text = text }
+        }
     }
 
     override fun onResume() {

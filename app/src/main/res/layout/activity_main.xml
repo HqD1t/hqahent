@@ -80,6 +80,26 @@
                     android:text="Бот реагирует только на фразы с этим именем, напр. «Боб, домой»." />
 
                 <TextView
+                    android:id="@+id/gainLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Чувствительность микрофона"
+                    android:textStyle="bold" />
+
+                <SeekBar
+                    android:id="@+id/micGain"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:max="10" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp"
+                    android:paddingBottom="8dp"
+                    android:text="Выше = лучше слышит издалека, но больше шума. После изменения выключите и включите бота." />
+
+                <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="DeepSeek API ключ"
@@ -335,6 +355,96 @@
 
             </LinearLayout>
         </ScrollView>
+
+        <!-- ============ PAGE 4: LOGS ============ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Логи"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:paddingBottom="8dp" />
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/logFilter"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:singleSelection="true"
+                app:selectionRequired="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/filterAll"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="Все" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/filterWarn"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="Предупр." />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/filterError"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="Ошибки" />
+
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingVertical="6dp">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/logRefresh"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="6dp"
+                    android:text="Обновить" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/logCopy"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="Копировать" />
+
+            </LinearLayout>
+
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1">
+
+                <TextView
+                    android:id="@+id/logText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="10sp"
+                    android:fontFamily="monospace"
+                    android:textIsSelectable="true"
+                    android:text="Нажмите «Обновить»" />
+
+            </ScrollView>
+
+        </LinearLayout>
 
     </ViewFlipper>
 

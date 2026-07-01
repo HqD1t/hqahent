@@ -37,6 +37,29 @@ class BotAccessibilityService : AccessibilityService() {
     fun goBack() = performGlobalAction(GLOBAL_ACTION_BACK)
     fun openRecents() = performGlobalAction(GLOBAL_ACTION_RECENTS)
     fun openNotifications() = performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS)
+    fun openQuickSettings() = performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS)
+    fun openPowerDialog() = performGlobalAction(GLOBAL_ACTION_POWER_DIALOG)
+
+    fun lockScreen(): Boolean =
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P)
+            performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN) else false
+
+    fun takeScreenshot(): Boolean =
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R)
+            performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT) else false
+
+    /** Open the app drawer with a swipe-up from the bottom (best effort). */
+    fun openAllApps(): Boolean {
+        val m = resources.displayMetrics
+        val path = Path().apply {
+            moveTo(m.widthPixels / 2f, m.heightPixels * 0.9f)
+            lineTo(m.widthPixels / 2f, m.heightPixels * 0.25f)
+        }
+        val stroke = GestureDescription.StrokeDescription(path, 0, 200)
+        return dispatchGesture(
+            GestureDescription.Builder().addStroke(stroke).build(), null, null
+        )
+    }
 
     // ---- Typing -------------------------------------------------------------
 
@@ -104,23 +127,23 @@ class BotAccessibilityService : AccessibilityService() {
     // ---- Scrolling / gestures ----------------------------------------------
 
     fun scroll(direction: Direction) {
-        val metrics = resources.displayMetrics
-        val w = metrics.widthPixels.toFloat()
-        val h = metrics.heightPixels.toFloat()
+        val m = resources.displayMetrics
+        val w = m.widthPixels.toFloat()
+        val h = m.heightPixels.toFloat()
         val cx = w / 2f
-        val (startY, endY) = when (direction) {
-            Direction.DOWN -> h * 0.75f to h * 0.25f
-            Direction.UP -> h * 0.25f to h * 0.75f
-        }
-        val path = Path().apply {
-            moveTo(cx, startY)
-            lineTo(cx, endY)
+        val cy = h / 2f
+        val path = Path()
+        when (direction) {
+            // Swipe direction is opposite to content movement: to scroll DOWN
+            // (see lower content) we swipe up.
+            Direction.DOWN -> { path.moveTo(cx, h * 0.75f); path.lineTo(cx, h * 0.25f) }
+            Direction.UP -> { path.moveTo(cx, h * 0.25f); path.lineTo(cx, h * 0.75f) }
+            Direction.RIGHT -> { path.moveTo(w * 0.75f, cy); path.lineTo(w * 0.25f, cy) }
+            Direction.LEFT -> { path.moveTo(w * 0.25f, cy); path.lineTo(w * 0.75f, cy) }
         }
         val stroke = GestureDescription.StrokeDescription(path, 0, 250)
         dispatchGesture(
-            GestureDescription.Builder().addStroke(stroke).build(),
-            null,
-            null
+            GestureDescription.Builder().addStroke(stroke).build(), null, null
         )
     }
 
@@ -194,22 +217,67 @@ class BotAccessibilityService : AccessibilityService() {
     enum class Corner { TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT }
 
     /** Tap the first on-screen element whose visible text contains [label]. */
-    fun tapByText(label: String): Boolean {
+    fun tapByText(label: String): Boolean = actByText(label, AccessibilityNodeInfo.ACTION_CLICK)
+
+    fun longPressByText(label: String): Boolean =
+        actByText(label, AccessibilityNodeInfo.ACTION_LONG_CLICK)
+
+    /** Double-tap by text (two quick clicks on the matching element). */
+    fun doubleTapByText(label: String): Boolean {
+        if (!tapByText(label)) return false
+        return tapByText(label)
+    }
+
+    private fun actByText(label: String, action: Int): Boolean {
         val root = rootInActiveWindow ?: return false
-        val matches = root.findAccessibilityNodeInfosByText(label)
-        for (node in matches) {
+        val query = label.trim().lowercase()
+        // Prefer exact-ish matches from the text index, then fall back to a manual
+        // case-insensitive walk (some nodes expose contentDescription, not text).
+        val candidates = root.findAccessibilityNodeInfosByText(label).toMutableList()
+        if (candidates.isEmpty()) collectByText(root, query, candidates)
+        for (node in candidates) {
             var n: AccessibilityNodeInfo? = node
             while (n != null) {
-                if (n.isClickable) {
-                    return n.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-                }
+                if (n.isClickable && n.performAction(action)) return true
                 n = n.parent
             }
         }
         return false
     }
 
-    enum class Direction { UP, DOWN }
+    private fun collectByText(
+        node: AccessibilityNodeInfo, query: String, out: MutableList<AccessibilityNodeInfo>
+    ) {
+        val text = (node.text?.toString() ?: "") + " " + (node.contentDescription?.toString() ?: "")
+        if (text.lowercase().contains(query)) out.add(node)
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            collectByText(child, query, out)
+        }
+    }
+
+    /**
+     * Try to tap [label]; if it's not on screen, scroll down and retry a few
+     * times, then scroll back up and retry. For "нажми на Пользователи/Тикеты".
+     */
+    fun tapByTextScrolling(label: String, maxScrolls: Int = 6): Boolean {
+        if (tapByText(label)) return true
+        repeat(maxScrolls) {
+            scroll(Direction.DOWN)
+            Thread.sleep(400)
+            if (tapByText(label)) return true
+        }
+        repeat(maxScrolls * 2) { scroll(Direction.UP); Thread.sleep(120) }
+        Thread.sleep(300)
+        repeat(maxScrolls) {
+            if (tapByText(label)) return true
+            scroll(Direction.UP)
+            Thread.sleep(400)
+        }
+        return false
+    }
+
+    enum class Direction { UP, DOWN, LEFT, RIGHT }
 
     companion object {
         private const val TAG = "BotA11y"

@@ -35,6 +35,11 @@ class Prefs(context: Context) {
         get() = sp.getString(KEY_WAKE, "боб") ?: "боб"
         set(value) = sp.edit().putString(KEY_WAKE, value.trim().lowercase()).apply()
 
+    /** Microphone software gain (1.0 = off). Helps far-field pickup. */
+    var micGain: Float
+        get() = sp.getFloat(KEY_GAIN, 2.5f)
+        set(value) = sp.edit().putFloat(KEY_GAIN, value.coerceIn(1f, 6f)).apply()
+
     // ---- Templates: name -> body -------------------------------------------
 
     fun templates(): Map<String, String> {
@@ -99,5 +104,6 @@ class Prefs(context: Context) {
         private const val KEY_LINKS = "links"
         private const val KEY_TRIGGERS = "triggers"
         private const val KEY_WAKE = "wake_word"
+        private const val KEY_GAIN = "mic_gain"
     }
 }

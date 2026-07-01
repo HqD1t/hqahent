@@ -11,12 +11,28 @@ android {
         applicationId = "com.voicebot.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
+    }
+
+    // Fixed signing key committed to the repo so every CI build has the SAME
+    // signature -> the APK installs as an UPDATE over the old one, keeping all
+    // permissions and the accessibility service enabled (no reinstall needed).
+    signingConfigs {
+        create("shared") {
+            storeFile = file("voicebot.jks")
+            storePassword = "voicebot"
+            keyAlias = "voicebot"
+            keyPassword = "voicebot"
+        }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("shared")
+        }
         release {
+            signingConfig = signingConfigs.getByName("shared")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

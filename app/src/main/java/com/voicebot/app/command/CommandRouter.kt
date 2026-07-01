@@ -123,11 +123,30 @@ class CommandRouter(
                 a11y()?.openRecents()
             containsAny(text, "шторка", "уведомления") -> a11y()?.openNotifications()
 
-            // ---- scrolling --------------------------------------------------
+            // ---- phone menus ------------------------------------------------
+            containsAny(text, "быстрые настройки", "тумблеры", "панель настроек") ->
+                a11y()?.openQuickSettings()
+            containsAny(text, "все приложения", "меню приложений", "главное меню",
+                "меню телефона", "открой меню", "список приложений") ->
+                a11y()?.openAllApps()
+            containsAny(text, "меню питания", "выключение", "перезагрузка", "выключи телефон") ->
+                a11y()?.openPowerDialog()
+            containsAny(text, "заблокируй", "блокировка экрана", "выключи экран", "погаси экран") -> {
+                if (a11y()?.lockScreen() != true) toast("Блокировка недоступна (нужен Android 9+)")
+            }
+            containsAny(text, "скриншот", "снимок экрана") -> {
+                if (a11y()?.takeScreenshot() != true) toast("Скриншот недоступен (нужен Android 11+)")
+            }
+
+            // ---- scrolling (all four directions) ----------------------------
             containsAny(text, "прокрути вниз", "листай вниз", "вниз") ->
                 a11y()?.scroll(BotAccessibilityService.Direction.DOWN)
             containsAny(text, "прокрути вверх", "листай вверх", "вверх") ->
                 a11y()?.scroll(BotAccessibilityService.Direction.UP)
+            containsAny(text, "влево", "прокрути лево", "листай влево") ->
+                a11y()?.scroll(BotAccessibilityService.Direction.LEFT)
+            containsAny(text, "вправо", "прокрути право", "листай вправо") ->
+                a11y()?.scroll(BotAccessibilityService.Direction.RIGHT)
 
             // ---- volume -----------------------------------------------------
             containsAny(text, "громче", "прибавь звук") -> changeVolume(up = true)
@@ -156,15 +175,29 @@ class CommandRouter(
             // ---- open chat / ticket: "открой 3 чат", "тикет 2678" -----------
             containsAny(text, "чат", "тикет", "диалог", "переписк") -> handleOpenChat(text)
 
-            // ---- tap: "нажми <что-то>" / just "нажать" = клик по центру ------
+            // ---- long press: "удерживай <текст>" ----------------------------
+            startsWithAny(text, "удерживай", "долгое нажатие", "зажми") -> {
+                val label = cleanTarget(stripPrefix(text, "удерживай", "долгое нажатие", "зажми"))
+                if (label.isBlank() || a11y()?.longPressByText(label) != true)
+                    toast("Не нашёл: «$label»")
+            }
+
+            // ---- double tap: "дважды нажми <текст>" -------------------------
+            startsWithAny(text, "дважды", "двойной тап", "два раза") -> {
+                val label = cleanTarget(stripPrefix(text, "дважды нажми", "дважды", "двойной тап", "два раза"))
+                if (label.isBlank() || a11y()?.doubleTapByText(label) != true)
+                    toast("Не нашёл: «$label»")
+            }
+
+            // ---- tap: "нажми на <текст>" (ищет на экране, листает) -----------
             startsWithAny(text, "нажми", "тапни", "выбери", "кликни", "нажать", "клик", "тап") -> {
-                val label = stripPrefix(
-                    text, "нажми", "тапни", "выбери", "кликни", "нажать", "клик", "тап"
+                val label = cleanTarget(
+                    stripPrefix(text, "нажми", "тапни", "выбери", "кликни", "нажать", "клик", "тап")
                 )
                 if (label.isBlank()) {
                     a11y()?.tapCenter()
-                } else if (a11y()?.tapByText(label) != true) {
-                    toast("Не нашёл на экране: «$label»")
+                } else {
+                    tapByTextAsync(label)
                 }
             }
 
@@ -221,16 +254,47 @@ class CommandRouter(
             "notifications" -> a11y()?.openNotifications()
             "scroll_up" -> a11y()?.scroll(BotAccessibilityService.Direction.UP)
             "scroll_down" -> a11y()?.scroll(BotAccessibilityService.Direction.DOWN)
+            "scroll_left" -> a11y()?.scroll(BotAccessibilityService.Direction.LEFT)
+            "scroll_right" -> a11y()?.scroll(BotAccessibilityService.Direction.RIGHT)
             "volume_up" -> changeVolume(up = true)
             "volume_down" -> changeVolume(up = false)
             "tap_center" -> a11y()?.tapCenter()
-            "tap_text" -> if (a11y()?.tapByText(arg) != true) toast("Не нашёл: «$arg»")
+            "tap_text" -> tapByTextAsync(cleanTarget(arg))
+            "long_press" -> if (a11y()?.longPressByText(cleanTarget(arg)) != true) toast("Не нашёл: «$arg»")
+            "quick_settings" -> a11y()?.openQuickSettings()
+            "all_apps" -> a11y()?.openAllApps()
+            "power_menu" -> a11y()?.openPowerDialog()
+            "screenshot" -> if (a11y()?.takeScreenshot() != true) toast("Скриншот недоступен")
+            "lock_screen" -> if (a11y()?.lockScreen() != true) toast("Блокировка недоступна")
             "open_app" -> openApp(arg)
             "focus_field" -> if (a11y()?.focusEditable() != true) toast("Поле не найдено")
             "type_text" -> if (a11y()?.typeIntoFocusedField(arg) != true) toast("Нет поля ввода")
             "clear_all" -> if (a11y()?.clearFocusedField() != true) toast("Нет поля ввода")
             "delete_substring" -> deleteSubstring(arg)
             else -> toast("Не понял команду: «$original»")
+        }
+    }
+
+    /** Remove filler words like "на"/"по"/"кнопку" from a tap target. */
+    private fun cleanTarget(s: String): String {
+        var t = s.trim()
+        for (f in listOf("на ", "по ", "кнопку ", "кнопка ", "элемент ", "иконку ")) {
+            if (t.startsWith(f)) t = t.removePrefix(f)
+        }
+        return t.trim()
+    }
+
+    /** Tap by on-screen text off the main thread (scroll-to-find can block). */
+    private fun tapByTextAsync(label: String) {
+        val a = a11y() ?: return
+        if (label.isBlank()) return
+        scope.launch(Dispatchers.IO) {
+            val ok = try {
+                a.tapByTextScrolling(label)
+            } catch (e: Exception) {
+                Log.e(TAG, "tapByText failed", e); false
+            }
+            if (!ok) withContext(Dispatchers.Main) { toast("Не нашёл на экране: «$label»") }
         }
     }
 
@@ -359,12 +423,27 @@ class CommandRouter(
         }.filter { it.length >= 2 }
 
         try {
-            val app = pm.getInstalledApplications(0).firstOrNull { info ->
+            // Score every launchable app and pick the best match: exact label >
+            // starts-with > contains > package match.
+            var best: String? = null
+            var bestScore = 0
+            for (info in pm.getInstalledApplications(0)) {
+                if (pm.getLaunchIntentForPackage(info.packageName) == null) continue
                 val label = pm.getApplicationLabel(info).toString().lowercase()
                 val pkg = info.packageName.lowercase()
-                needles.any { label.contains(it) || pkg.contains(it) }
+                var score = 0
+                for (nd in needles) {
+                    score = maxOf(score, when {
+                        label == nd -> 100
+                        label.startsWith(nd) -> 80
+                        label.contains(nd) -> 60
+                        pkg.contains(nd) -> 40
+                        else -> 0
+                    })
+                }
+                if (score > bestScore) { bestScore = score; best = info.packageName }
             }
-            val intent = app?.let { pm.getLaunchIntentForPackage(it.packageName) }
+            val intent = best?.let { pm.getLaunchIntentForPackage(it) }
             if (intent != null) {
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(intent)
@@ -447,6 +526,8 @@ class CommandRouter(
             "ашвид" to "hwid", "хвид" to "hwid",
             "коала клеш" to "koala", "коала" to "koala",
             "призрак бокс" to "prizrak", "призрак" to "prizrak",
+            "геодема" to "geodema", "гео дема" to "geodema",
+            "клингай" to "kling", "грок" to "grok", "гео" to "geo",
             "некобокс" to "nekobox", "неко" to "neko",
             "хиддифай" to "hiddify", "каринг" to "karing",
             "флклеш" to "flclash", "клеш" to "clash",
