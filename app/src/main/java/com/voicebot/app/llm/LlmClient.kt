@@ -69,6 +69,37 @@ class LlmClient(private val apiKey: String) {
         }
     }
 
+    /**
+     * Verifies the key with a tiny request. Returns null on success, or a
+     * human-readable error string on failure. Blocking — call off the main thread.
+     */
+    fun check(): String? {
+        if (apiKey.isBlank()) return "Ключ не задан"
+        return try {
+            val payload = JSONObject().apply {
+                put("model", MODEL)
+                put("stream", false)
+                put("max_tokens", 1)
+                put("messages", JSONArray().put(JSONObject().apply {
+                    put("role", "user")
+                    put("content", "ok")
+                }))
+            }
+            val request = Request.Builder()
+                .url("https://api.deepseek.com/chat/completions")
+                .addHeader("Authorization", "Bearer $apiKey")
+                .addHeader("Content-Type", "application/json")
+                .post(payload.toString().toRequestBody(JSON))
+                .build()
+            http.newCall(request).execute().use { resp ->
+                if (resp.isSuccessful) null
+                else "Ошибка ${resp.code}: ${resp.body?.string()?.take(120)}"
+            }
+        } catch (e: Exception) {
+            "Нет связи: ${e.message}"
+        }
+    }
+
     companion object {
         private const val TAG = "LlmClient"
         private const val MODEL = "deepseek-chat"

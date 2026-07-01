@@ -63,8 +63,8 @@ class VoskRecognizer(
         }
 
         override fun onFinalResult(hypothesis: String?) {
-            val text = hypothesis?.let { JSONObject(it).optString("text", "") } ?: ""
-            if (text.isNotBlank()) onResult(text)
+            // Fires only when the service stops; onResult already delivered each
+            // segment, so routing here too would double-execute commands.
         }
 
         override fun onError(exception: Exception?) {

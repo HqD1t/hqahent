@@ -3,6 +3,8 @@ package com.voicebot.app.command
 import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
+import android.media.ToneGenerator
+import android.util.Log
 import android.widget.Toast
 import com.voicebot.app.data.Prefs
 import com.voicebot.app.llm.LlmClient
@@ -27,8 +29,23 @@ class CommandRouter(
 ) {
 
     @Volatile private var dictating = false
+    @Volatile private var armedUntil = 0L
+    private val tone = ToneGenerator(AudioManager.STREAM_MUSIC, 80)
 
+    /**
+     * Entry point for every finalized phrase. Wrapped so that a failure in one
+     * command can never crash the whole listening service.
+     */
     fun handle(rawText: String) {
+        try {
+            dispatch(rawText)
+        } catch (e: Exception) {
+            Log.e(TAG, "Command handling failed for: $rawText", e)
+            toast("Ошибка выполнения команды")
+        }
+    }
+
+    private fun dispatch(rawText: String) {
         val text = rawText.trim().lowercase()
         if (text.isBlank()) return
 
@@ -38,25 +55,45 @@ class CommandRouter(
             return
         }
 
-        // Outside dictation the phrase must be addressed to the bot by name,
-        // e.g. "боб, домой". Everything before/including the name is stripped.
-        val command = extractAfterWakeWord(text) ?: return
-        if (command.isBlank()) return
+        val wake = prefs.wakeWord.trim().lowercase()
 
-        route(command)
+        // Wake word disabled -> every phrase is a command.
+        if (wake.isBlank()) {
+            route(text)
+            return
+        }
+
+        val idx = text.indexOf(wake)
+        if (idx >= 0) {
+            // The name was heard. Beep, then run whatever follows it in the same
+            // phrase. If nothing follows, "arm" the bot so the NEXT phrase (which
+            // Vosk may deliver as a separate segment) is treated as the command.
+            beep()
+            val remainder = text.substring(idx + wake.length)
+                .trimStart(' ', ',', '.', '!')
+            if (remainder.isNotBlank()) {
+                armedUntil = 0L
+                route(remainder)
+            } else {
+                armedUntil = System.currentTimeMillis() + WAKE_WINDOW_MS
+            }
+            return
+        }
+
+        // No name in this phrase: only act if the name was said just before.
+        if (System.currentTimeMillis() <= armedUntil) {
+            armedUntil = 0L
+            route(text)
+        }
+        // otherwise: not addressed to the bot -> ignore
     }
 
-    /**
-     * Returns the command part after the wake word, or null if the phrase
-     * isn't addressed to the bot. If no wake word is configured, passes through.
-     */
-    private fun extractAfterWakeWord(text: String): String? {
-        val wake = prefs.wakeWord.trim().lowercase()
-        if (wake.isBlank()) return text
-        val idx = text.indexOf(wake)
-        if (idx < 0) return null
-        // Drop the wake word and any trailing comma/space after it.
-        return text.substring(idx + wake.length).trimStart(' ', ',', '.', '!')
+    /** Short confirmation beep when the wake word is recognized. */
+    private fun beep() {
+        try {
+            tone.startTone(ToneGenerator.TONE_PROP_BEEP, 150)
+        } catch (_: Exception) {
+        }
     }
 
     private fun route(text: String) {
@@ -118,13 +155,18 @@ class CommandRouter(
         }
         // Correct in background, then type into the focused field.
         scope.launch(Dispatchers.IO) {
-            val out = if (prefs.grammarFix && prefs.apiKey.isNotBlank()) {
-                LlmClient(prefs.apiKey).correctText(text)
-            } else text
-            withContext(Dispatchers.Main) {
-                if (a11y()?.typeIntoFocusedField(out) != true) {
-                    toast("Нет активного поля ввода")
+            try {
+                val out = if (prefs.grammarFix && prefs.apiKey.isNotBlank()) {
+                    LlmClient(prefs.apiKey).correctText(text)
+                } else text
+                withContext(Dispatchers.Main) {
+                    if (a11y()?.typeIntoFocusedField(out) != true) {
+                        toast("Нет активного поля ввода")
+                    }
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "Dictation failed", e)
+                toast("Ошибка обработки текста")
             }
         }
     }
@@ -144,16 +186,22 @@ class CommandRouter(
         val pm = context.packageManager
         val target = query.trim()
         if (target.isBlank()) return
-        val intent = pm.getInstalledApplications(0)
-            .firstOrNull {
-                pm.getApplicationLabel(it).toString().lowercase().contains(target)
+        try {
+            val intent = pm.getInstalledApplications(0)
+                .firstOrNull {
+                    val label = pm.getApplicationLabel(it).toString().lowercase()
+                    label.contains(target) || target.contains(label)
+                }
+                ?.let { pm.getLaunchIntentForPackage(it.packageName) }
+            if (intent != null) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+            } else {
+                toast("Приложение «$target» не найдено")
             }
-            ?.let { pm.getLaunchIntentForPackage(it.packageName) }
-        if (intent != null) {
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(intent)
-        } else {
-            toast("Приложение «$target» не найдено")
+        } catch (e: Exception) {
+            Log.e(TAG, "openApp failed for '$target'", e)
+            toast("Не удалось открыть «$target»")
         }
     }
 
@@ -189,5 +237,11 @@ class CommandRouter(
     private fun stripPrefix(text: String, vararg prefixes: String): String {
         for (p in prefixes) if (text.startsWith(p)) return text.removePrefix(p).trim()
         return text
+    }
+
+    companion object {
+        private const val TAG = "CommandRouter"
+        // How long after hearing the name the next phrase counts as a command.
+        private const val WAKE_WINDOW_MS = 8000L
     }
 }

@@ -42,7 +42,11 @@ class VoiceService : Service() {
         recognizer = VoskRecognizer(
             context = this,
             onPartial = { /* live text; could update notification */ },
-            onResult = { text -> router.handle(text) },
+            onResult = { text ->
+                // Show what was heard so behaviour is debuggable at a glance.
+                updateNotification("Услышал: $text")
+                router.handle(text)
+            },
             onError = { msg -> updateNotification("Ошибка: $msg") },
         )
         recognizer?.start()

@@ -93,6 +93,13 @@
             android:layout_height="wrap_content"
             android:text="Сохранить ключ" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/checkKey"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Проверить ключ" />
+
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"

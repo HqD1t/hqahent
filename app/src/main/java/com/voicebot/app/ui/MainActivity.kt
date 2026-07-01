@@ -62,6 +62,21 @@ class MainActivity : AppCompatActivity() {
             toast("Сохранено. Имя бота: «${prefs.wakeWord}»")
         }
 
+        binding.checkKey.setOnClickListener {
+            val key = binding.apiKey.text.toString().trim()
+            if (key.isBlank()) {
+                toast("Сначала введите ключ")
+                return@setOnClickListener
+            }
+            toast("Проверяю ключ…")
+            thread {
+                val err = com.voicebot.app.llm.LlmClient(key).check()
+                runOnUiThread {
+                    toast(if (err == null) "✅ Ключ работает" else "❌ $err")
+                }
+            }
+        }
+
         binding.openAccessibility.setOnClickListener {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
