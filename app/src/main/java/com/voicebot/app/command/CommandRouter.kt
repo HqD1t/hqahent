@@ -148,6 +148,14 @@ class CommandRouter(
                 if (toType.isBlank()) toast("Скажите: «ввод <текст>»") else typeText(toType)
             }
 
+            // ---- corner taps: "нажми верхний левый угол" --------------------
+            containsAny(text, "угол") ||
+                (containsAny(text, "клик", "нажми", "тапни", "тап") &&
+                    containsAny(text, "верх", "низ", "лев", "прав")) -> tapCornerFrom(text)
+
+            // ---- open chat / ticket: "открой 3 чат", "тикет 2678" -----------
+            containsAny(text, "чат", "тикет", "диалог", "переписк") -> handleOpenChat(text)
+
             // ---- tap: "нажми <что-то>" / just "нажать" = клик по центру ------
             startsWithAny(text, "нажми", "тапни", "выбери", "кликни", "нажать", "клик", "тап") -> {
                 val label = stripPrefix(
@@ -158,6 +166,12 @@ class CommandRouter(
                 } else if (a11y()?.tapByText(label) != true) {
                     toast("Не нашёл на экране: «$label»")
                 }
+            }
+
+            // ---- insert saved link: "ссылка <имя>" --------------------------
+            startsWithAny(text, "вставь ссылку", "ссылка", "линк", "ссылку") -> {
+                val name = stripPrefix(text, "вставь ссылку", "ссылку", "ссылка", "линк").trim()
+                insertLink(name)
             }
 
             // ---- open app: "открой <название>" ------------------------------
@@ -271,6 +285,65 @@ class CommandRouter(
         }
     }
 
+    private fun insertLink(name: String) {
+        val url = prefs.links()[name.lowercase()]
+        if (url == null) {
+            toast("Ссылка «$name» не найдена")
+            return
+        }
+        if (a11y()?.typeIntoFocusedField(url) != true) {
+            toast("Нет активного поля ввода")
+        }
+    }
+
+    private fun tapCornerFrom(text: String) {
+        val corner = when {
+            text.contains("верх") && text.contains("лев") -> BotAccessibilityService.Corner.TOP_LEFT
+            text.contains("верх") && text.contains("прав") -> BotAccessibilityService.Corner.TOP_RIGHT
+            text.contains("низ") && text.contains("лев") -> BotAccessibilityService.Corner.BOTTOM_LEFT
+            text.contains("низ") && text.contains("прав") -> BotAccessibilityService.Corner.BOTTOM_RIGHT
+            else -> null
+        }
+        if (corner != null) a11y()?.tapCorner(corner)
+        else toast("Скажите угол: верх/низ + лево/право")
+    }
+
+    private fun handleOpenChat(text: String) {
+        val a = a11y() ?: return
+        when {
+            text.contains("тикет") -> {
+                val q = text.substringAfter("тикет").trim()
+                if (q.isBlank() || !a.tapByText(q)) toast("Тикет не найден: «$q»")
+            }
+            else -> {
+                val n = parseNumber(text)
+                if (n != null) {
+                    if (!a.tapListItem(n)) toast("Не нашёл $n-й чат")
+                } else {
+                    val q = stripWords(
+                        text, "открой", "запусти", "чат", "диалог", "переписку", "переписка"
+                    )
+                    if (q.isBlank() || !a.tapByText(q)) toast("Чат не найден: «$q»")
+                }
+            }
+        }
+    }
+
+    /** First number in the phrase, as digits or a Russian numeral word (1..10). */
+    private fun parseNumber(text: String): Int? {
+        for (token in text.split(' ', ',', '-')) {
+            token.trim().toIntOrNull()?.let { return it }
+            NUMBER_WORDS[token.trim()]?.let { return it }
+        }
+        return null
+    }
+
+    private fun stripWords(text: String, vararg words: String): String {
+        var s = text
+        for (w in words) s = s.replace(w, " ")
+        return s.replace(Regex("\\s+"), " ").trim()
+    }
+
     private fun openApp(query: String) {
         val pm = context.packageManager
         val target = query.trim().lowercase()
@@ -363,6 +436,43 @@ class CommandRouter(
             "тикток" to "tiktok", "плейстор" to "vending", "маркет" to "vending",
             "настройки" to "settings", "камера" to "camera",
             "галерея" to "gallery", "калькулятор" to "calcul",
+            // --- user's apps (spoken RU -> label/package substring) ----------
+            "эвэпэн" to "vpn", "впн" to "vpn",
+            "запрет" to "zapret",
+            "днс" to "dns",
+            "хап" to "happ", "хапп" to "happ",
+            "в2рейтун" to "v2raytun", "врейтун" to "v2raytun", "ви ту рей" to "v2raytun",
+            "гугл плей" to "google play", "гугле плэй" to "google play", "плей маркет" to "google play",
+            "ап сторе" to "store", "апп стор" to "store",
+            "ашвид" to "hwid", "хвид" to "hwid",
+            "коала клеш" to "koala", "коала" to "koala",
+            "призрак бокс" to "prizrak", "призрак" to "prizrak",
+            "некобокс" to "nekobox", "неко" to "neko",
+            "хиддифай" to "hiddify", "каринг" to "karing",
+            "флклеш" to "flclash", "клеш" to "clash",
+            "мешцентрал" to "meshcentral", "миша" to "mesh",
+            "рудесктоп" to "rudesktop", "рустор" to "rustore",
+            "ютуб мьюзик" to "yt music", "рутуб" to "rutube",
+            "твич" to "twitch", "уо мик" to "wo mic",
+            "озон" to "ozon", "вайлдберриз" to "wildberries", "вб" to "wildberries",
+            "сбербанк" to "сбер", "тбанк" to "т-банк", "тинькофф" to "т-банк",
+            "пятерочка" to "пятёрочка", "яндекс го" to "яндексgo", "такси" to "яндексgo",
+            "капкат" to "capcut", "капкут" to "capcut", "шазам" to "shazam",
+            "брол старс" to "brawl", "бравл" to "brawl", "зона" to "zona",
+        )
+
+        // Russian numerals (cardinal + ordinal) 1..10 for "открой N чат".
+        private val NUMBER_WORDS = mapOf(
+            "один" to 1, "первый" to 1, "первую" to 1,
+            "два" to 2, "две" to 2, "второй" to 2, "вторую" to 2,
+            "три" to 3, "третий" to 3, "третью" to 3,
+            "четыре" to 4, "четвёртый" to 4, "четвертый" to 4,
+            "пять" to 5, "пятый" to 5,
+            "шесть" to 6, "шестой" to 6,
+            "семь" to 7, "седьмой" to 7,
+            "восемь" to 8, "восьмой" to 8,
+            "девять" to 9, "девятый" to 9,
+            "десять" to 10, "десятый" to 10,
         )
 
         private val TRANSLIT: Map<Char, String> = mapOf(

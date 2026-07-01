@@ -3,6 +3,7 @@ package com.voicebot.app.service
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.graphics.Path
+import android.graphics.Rect
 import android.os.Bundle
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
@@ -124,14 +125,73 @@ class BotAccessibilityService : AccessibilityService() {
     }
 
     /** Tap in the middle of the screen (a simple "click" with no target). */
-    fun tapCenter(): Boolean {
+    fun tapCenter(): Boolean = tapAt(0.5f, 0.5f)
+
+    /** Tap at a point given as fractions (0..1) of screen width/height. */
+    fun tapAt(fx: Float, fy: Float): Boolean {
         val m = resources.displayMetrics
-        val path = Path().apply { moveTo(m.widthPixels / 2f, m.heightPixels / 2f) }
+        val x = (m.widthPixels * fx).coerceIn(1f, m.widthPixels - 1f)
+        val y = (m.heightPixels * fy).coerceIn(1f, m.heightPixels - 1f)
+        val path = Path().apply { moveTo(x, y) }
         val stroke = GestureDescription.StrokeDescription(path, 0, 60)
         return dispatchGesture(
             GestureDescription.Builder().addStroke(stroke).build(), null, null
         )
     }
+
+    /** Tap one of the four screen corners (slightly inset). */
+    fun tapCorner(corner: Corner): Boolean = when (corner) {
+        Corner.TOP_LEFT -> tapAt(0.12f, 0.12f)
+        Corner.TOP_RIGHT -> tapAt(0.88f, 0.12f)
+        Corner.BOTTOM_LEFT -> tapAt(0.12f, 0.88f)
+        Corner.BOTTOM_RIGHT -> tapAt(0.88f, 0.88f)
+    }
+
+    /**
+     * Tap the N-th row (1-based) of the main scrollable list on screen — used to
+     * open "the 3rd chat" etc. Rows are ordered top-to-bottom.
+     */
+    fun tapListItem(index: Int): Boolean {
+        if (index < 1) return false
+        val root = rootInActiveWindow ?: return false
+        val list = findScrollable(root) ?: root
+        val rows = ArrayList<AccessibilityNodeInfo>()
+        collectRows(list, rows)
+        val sorted = rows
+            .map { node -> node to Rect().also { node.getBoundsInScreen(it) }.top }
+            .sortedBy { it.second }
+            .map { it.first }
+        val target = sorted.getOrNull(index - 1) ?: return false
+        var n: AccessibilityNodeInfo? = target
+        while (n != null) {
+            if (n.isClickable) return n.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            n = n.parent
+        }
+        return false
+    }
+
+    private fun findScrollable(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+        if (node.isScrollable) return node
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            findScrollable(child)?.let { return it }
+        }
+        return null
+    }
+
+    /** Collect top-level clickable rows (don't descend into a clickable one). */
+    private fun collectRows(node: AccessibilityNodeInfo, out: MutableList<AccessibilityNodeInfo>) {
+        if (node.isClickable) {
+            out.add(node)
+            return
+        }
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            collectRows(child, out)
+        }
+    }
+
+    enum class Corner { TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT }
 
     /** Tap the first on-screen element whose visible text contains [label]. */
     fun tapByText(label: String): Boolean {

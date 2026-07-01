@@ -56,6 +56,27 @@ class Prefs(context: Context) {
         sp.edit().putString(KEY_TEMPLATES, obj.toString()).apply()
     }
 
+    // ---- Links: name -> url -------------------------------------------------
+
+    fun links(): Map<String, String> {
+        val raw = sp.getString(KEY_LINKS, null) ?: return emptyMap()
+        val obj = JSONObject(raw)
+        return obj.keys().asSequence().associateWith { obj.getString(it) }
+    }
+
+    fun saveLink(name: String, url: String) {
+        val obj = JSONObject()
+        links().forEach { (k, v) -> obj.put(k, v) }
+        obj.put(name.trim().lowercase(), url.trim())
+        sp.edit().putString(KEY_LINKS, obj.toString()).apply()
+    }
+
+    fun deleteLink(name: String) {
+        val obj = JSONObject()
+        links().filterKeys { it != name }.forEach { (k, v) -> obj.put(k, v) }
+        sp.edit().putString(KEY_LINKS, obj.toString()).apply()
+    }
+
     // ---- Trigger keywords ---------------------------------------------------
 
     /** Extra user-defined phrase -> template-name links. */
@@ -75,6 +96,7 @@ class Prefs(context: Context) {
         private const val KEY_API_KEY = "api_key"
         private const val KEY_GRAMMAR = "grammar_fix"
         private const val KEY_TEMPLATES = "templates"
+        private const val KEY_LINKS = "links"
         private const val KEY_TRIGGERS = "triggers"
         private const val KEY_WAKE = "wake_word"
     }

@@ -9,6 +9,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import com.voicebot.app.R
 import com.voicebot.app.data.Prefs
 import com.voicebot.app.databinding.ActivityMainBinding
 import com.voicebot.app.recognition.ModelManager
@@ -105,7 +106,55 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        binding.deleteTemplate.setOnClickListener {
+            val name = binding.templateDelete.text.toString().trim().lowercase()
+            if (name.isBlank()) {
+                toast("Введите имя шаблона")
+            } else {
+                prefs.deleteTemplate(name)
+                binding.templateDelete.text?.clear()
+                toast("Шаблон «$name» удалён")
+                renderTemplates()
+            }
+        }
+
+        binding.saveLink.setOnClickListener {
+            val name = binding.linkName.text.toString().trim()
+            val url = binding.linkBody.text.toString().trim()
+            if (name.isBlank() || url.isBlank()) {
+                toast("Заполните имя и ссылку")
+            } else {
+                prefs.saveLink(name, url)
+                binding.linkName.text?.clear()
+                binding.linkBody.text?.clear()
+                toast("Ссылка «$name» сохранена")
+                renderLinks()
+            }
+        }
+
+        binding.deleteLink.setOnClickListener {
+            val name = binding.linkDelete.text.toString().trim().lowercase()
+            if (name.isBlank()) {
+                toast("Введите имя ссылки")
+            } else {
+                prefs.deleteLink(name)
+                binding.linkDelete.text?.clear()
+                toast("Ссылка «$name» удалена")
+                renderLinks()
+            }
+        }
+
+        binding.bottomNav.setOnItemSelectedListener { item ->
+            binding.pager.displayedChild = when (item.itemId) {
+                R.id.nav_templates -> 1
+                R.id.nav_links -> 2
+                else -> 0
+            }
+            true
+        }
+
         renderTemplates()
+        renderLinks()
     }
 
     override fun onResume() {
@@ -251,6 +300,12 @@ class MainActivity : AppCompatActivity() {
         val list = prefs.templates()
         binding.templatesList.text = if (list.isEmpty()) "— пусто —"
         else list.entries.joinToString("\n") { "• ${it.key}: ${it.value.take(40)}" }
+    }
+
+    private fun renderLinks() {
+        val list = prefs.links()
+        binding.linksList.text = if (list.isEmpty()) "— пусто —"
+        else list.entries.joinToString("\n") { "• ${it.key}: ${it.value.take(50)}" }
     }
 
     private fun toast(m: String) = Toast.makeText(this, m, Toast.LENGTH_SHORT).show()

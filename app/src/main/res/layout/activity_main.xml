@@ -1,215 +1,347 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true">
+    android:orientation="vertical">
 
-    <LinearLayout
+    <ViewFlipper
+        android:id="@+id/pager"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <!-- ============ PAGE 1: HOME ============ -->
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/app_name"
+                    android:textSize="24sp"
+                    android:textStyle="bold"
+                    android:paddingBottom="12dp" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/toggle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Бот включён"
+                    android:textSize="18sp"
+                    android:paddingVertical="8dp" />
+
+                <TextView
+                    android:id="@+id/a11yStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Служба управления: —"
+                    android:paddingVertical="8dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/openAccessibility"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Открыть спец. возможности" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#33000000"
+                    android:layout_marginVertical="16dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Имя бота (обращение)"
+                    android:textStyle="bold" />
+
+                <EditText
+                    android:id="@+id/wakeWord"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="боб"
+                    android:inputType="text"
+                    android:autofillHints="" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp"
+                    android:paddingBottom="8dp"
+                    android:text="Бот реагирует только на фразы с этим именем, напр. «Боб, домой»." />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="DeepSeek API ключ"
+                    android:textStyle="bold" />
+
+                <EditText
+                    android:id="@+id/apiKey"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="sk-..."
+                    android:inputType="textPassword"
+                    android:autofillHints="" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/grammarSwitch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Исправлять грамматику через DeepSeek"
+                    android:paddingVertical="8dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/saveKey"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Сохранить ключ" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/checkKey"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Проверить ключ" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#33000000"
+                    android:layout_marginVertical="16dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Диагностика"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/statusInfo"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingVertical="6dp"
+                    android:text="—" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/testMic"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Тест микрофона (10 сек)" />
+
+                <TextView
+                    android:id="@+id/micResult"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingVertical="6dp"
+                    android:minLines="2"
+                    android:text="Нажмите «Тест микрофона» и говорите" />
+
+                <TextView
+                    android:id="@+id/crashTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:textStyle="bold"
+                    android:textColor="#D32F2F"
+                    android:visibility="gone"
+                    android:text="Последний сбой:" />
+
+                <TextView
+                    android:id="@+id/crashLog"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="11sp"
+                    android:fontFamily="monospace"
+                    android:visibility="gone"
+                    android:textIsSelectable="true"
+                    android:text="" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/clearCrash"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone"
+                    android:text="Очистить лог сбоя" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:textSize="12sp"
+                    android:text="@string/help_commands" />
+
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- ============ PAGE 2: TEMPLATES ============ -->
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Шаблоны текста"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:paddingBottom="4dp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp"
+                    android:paddingBottom="12dp"
+                    android:text="Вставка голосом: «Боб, шаблон &lt;имя&gt;»" />
+
+                <EditText
+                    android:id="@+id/templateName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Имя (напр. приветствие)"
+                    android:inputType="text"
+                    android:autofillHints="" />
+
+                <EditText
+                    android:id="@+id/templateBody"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Текст шаблона"
+                    android:inputType="textMultiLine"
+                    android:minLines="2"
+                    android:autofillHints="" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/saveTemplate"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Сохранить шаблон" />
+
+                <EditText
+                    android:id="@+id/templateDelete"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:hint="Имя для удаления"
+                    android:inputType="text"
+                    android:autofillHints="" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/deleteTemplate"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Удалить шаблон" />
+
+                <TextView
+                    android:id="@+id/templatesList"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingTop="12dp"
+                    android:text="—" />
+
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- ============ PAGE 3: LINKS ============ -->
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Ссылки"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:paddingBottom="4dp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp"
+                    android:paddingBottom="12dp"
+                    android:text="Вставка голосом: «Боб, ссылка &lt;имя&gt;» (напр. «ссылка коала клеш»)" />
+
+                <EditText
+                    android:id="@+id/linkName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Имя (напр. коала клеш)"
+                    android:inputType="text"
+                    android:autofillHints="" />
+
+                <EditText
+                    android:id="@+id/linkBody"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="https://..."
+                    android:inputType="textUri"
+                    android:autofillHints="" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/saveLink"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Сохранить ссылку" />
+
+                <EditText
+                    android:id="@+id/linkDelete"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:hint="Имя для удаления"
+                    android:inputType="text"
+                    android:autofillHints="" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/deleteLink"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Удалить ссылку" />
+
+                <TextView
+                    android:id="@+id/linksList"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingTop="12dp"
+                    android:text="—" />
+
+            </LinearLayout>
+        </ScrollView>
+
+    </ViewFlipper>
+
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNav"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="20dp">
+        app:menu="@menu/bottom_nav" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/app_name"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            android:paddingBottom="12dp" />
-
-        <com.google.android.material.materialswitch.MaterialSwitch
-            android:id="@+id/toggle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Бот включён"
-            android:textSize="18sp"
-            android:paddingVertical="8dp" />
-
-        <TextView
-            android:id="@+id/a11yStatus"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Служба управления: —"
-            android:paddingVertical="8dp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/openAccessibility"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Открыть спец. возможности" />
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="#33000000"
-            android:layout_marginVertical="16dp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Диагностика"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/statusInfo"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:paddingVertical="6dp"
-            android:text="—" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/testMic"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Тест микрофона (10 сек)" />
-
-        <TextView
-            android:id="@+id/micResult"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:paddingVertical="6dp"
-            android:minLines="2"
-            android:text="Нажмите «Тест микрофона» и говорите" />
-
-        <TextView
-            android:id="@+id/crashTitle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:textStyle="bold"
-            android:textColor="#D32F2F"
-            android:visibility="gone"
-            android:text="Последний сбой:" />
-
-        <TextView
-            android:id="@+id/crashLog"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="11sp"
-            android:fontFamily="monospace"
-            android:visibility="gone"
-            android:textIsSelectable="true"
-            android:text="" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/clearCrash"
-            style="@style/Widget.Material3.Button.TextButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:visibility="gone"
-            android:text="Очистить лог сбоя" />
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="#33000000"
-            android:layout_marginVertical="16dp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Имя бота (обращение)"
-            android:textStyle="bold" />
-
-        <EditText
-            android:id="@+id/wakeWord"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="боб"
-            android:inputType="text"
-            android:autofillHints="" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="12sp"
-            android:paddingBottom="8dp"
-            android:text="Бот реагирует только на фразы с этим именем, напр. «Боб, домой»." />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="DeepSeek API ключ"
-            android:textStyle="bold" />
-
-        <EditText
-            android:id="@+id/apiKey"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="sk-..."
-            android:inputType="textPassword"
-            android:autofillHints="" />
-
-        <com.google.android.material.materialswitch.MaterialSwitch
-            android:id="@+id/grammarSwitch"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Исправлять грамматику через DeepSeek"
-            android:paddingVertical="8dp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/saveKey"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Сохранить ключ" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/checkKey"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Проверить ключ" />
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="#33000000"
-            android:layout_marginVertical="16dp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Шаблоны текста"
-            android:textStyle="bold" />
-
-        <EditText
-            android:id="@+id/templateName"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Имя (напр. приветствие)"
-            android:inputType="text"
-            android:autofillHints="" />
-
-        <EditText
-            android:id="@+id/templateBody"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Текст шаблона"
-            android:inputType="textMultiLine"
-            android:minLines="2"
-            android:autofillHints="" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/saveTemplate"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Сохранить шаблон" />
-
-        <TextView
-            android:id="@+id/templatesList"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:paddingTop="8dp"
-            android:text="—" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:textSize="12sp"
-            android:text="@string/help_commands" />
-
-    </LinearLayout>
-</ScrollView>
+</LinearLayout>
